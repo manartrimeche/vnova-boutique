@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  app:
+    container_name: boutique
+    image: docker-react-d
+    build:
+      context: .
+    ports:
+      - 8885:80
