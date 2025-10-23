@@ -255,7 +255,6 @@ const Navbar = () => {
     setProdResults([]);
   };
 
-  // RECHERCHE INSTANTANÉE - Dès le premier caractère
   useEffect(() => {
     if (!showSearch) {
       setProdResults([]);
@@ -356,7 +355,6 @@ const Navbar = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileProducts, setShowMobileProducts] = useState(false);
 
-  /* ---------- Gestion fermeture menu mobile au clic extérieur ---------- */
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -412,7 +410,6 @@ const Navbar = () => {
     };
   }, [showSearch]);
 
-  // Fonction pour fermer le menu mobile
   const closeMobileMenu = () => {
     setShowMobileMenu(false);
     setShowMobileProducts(false);

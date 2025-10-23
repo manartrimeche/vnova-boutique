@@ -3,16 +3,15 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { Country } from "country-state-city";
-
 import "react-country-state-city/dist/react-country-state-city.css";
-
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useForm } from "react-hook-form";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheckCircle, FaShoppingCart, FaUser, FaCreditCard, FaFileInvoice, FaCheck } from "react-icons/fa";
 import Gouvernerat from "../utils/Gouvernerat.json";
 import { useNavigate } from "react-router-dom";
+
 const Registre = () => {
   const [isDisabled, setIsDisabled] = useState(false);
   const navigate = useNavigate();
@@ -45,10 +44,20 @@ const Registre = () => {
   const [Transporteurs, SetTransporteurs] = useState([]);
   const [viewFindAdherent, SetViewAdherent] = useState(true);
   const [viewAdresse, SetViewAdresse] = useState(false);
+  const [viewReview, SetViewReview] = useState(false);
   const [viewSucces, SetViewSecces] = useState(false);
   const [Identifiant, SetIdentiafiant] = useState("");
   const [adherent, SetAdherent] = useState();
+  const [identifiantError, setIdentifiantError] = useState("");
+  const [currentStep, setCurrentStep] = useState(1);
+  
   const findAdherentByIdentifiant = async () => {
+    if (!Identifiant.trim()) {
+      setIdentifiantError("L'identifiant adhérent est obligatoire");
+      return;
+    }
+
+    setIdentifiantError("");
     try {
       await axios
         .post(process.env.API_URL + "/identifiant", {
@@ -58,12 +67,13 @@ const Registre = () => {
           if (response?.status == 200 && response?.statusText == "OK") {
             SetAdherent(response?.data?.result);
             SetViewAdresse(true);
+            setCurrentStep(2);
+            toast.success("Adhérent trouvé avec succès !");
           }
         });
     } catch (error) {
       if (error?.response?.data?.msg == "adherent n'existe pas") {
-        console.log(error?.response?.data?.msg);
-        toast.error("adherent n'existe pas !");
+        setIdentifiantError("Adhérent non trouvé !");
         SetAdherent("");
         SetViewAdresse(false);
       }
@@ -88,7 +98,6 @@ const Registre = () => {
 
   const onChangeInput = (e) => {
     const { name, value } = e.target;
-
     SetCommande({ ...commande, [name]: value });
 
     if (name === "numero_Tel1_Inscrit") {
@@ -175,7 +184,6 @@ const Registre = () => {
     for (let i = 0; i < products.length; i++) {
       s = s + parseFloat(products[i].total);
     }
-
     SetMontantTotal(parseFloat(parseFloat(s) + parseFloat(timber)).toFixed(3));
   };
 
@@ -212,7 +220,6 @@ const Registre = () => {
   };
 
   useEffect(() => {
-    //SetMontantTotal(cartContext.cartTotal + parseFloat(timber));
     setSelectedCountry(Country.getAllCountries()[223]);
     Adresse.pays = Country.getAllCountries()[223].name;
     setCountryid(224);
@@ -235,7 +242,6 @@ const Registre = () => {
           frais = parseFloat(
             response?.data?.result.livraison_TTC.$numberDecimal
           );
-
           SetMontantTotal(
             parseFloat(parseFloat(MontanTotal) + parseFloat(frais)).toFixed(3)
           );
@@ -247,432 +253,585 @@ const Registre = () => {
 
   const onChangeSelectPaiement = (e) => {
     const { name, value } = e.target;
-
     if (value.length === 0) return false;
     SetCommande({ ...commande, [name]: value });
   };
 
   const onChangeSelectTransporteur = (e) => {
     const { name, value } = e.target;
-
     if (value.length === 0) return false;
     getTransporteurById(value);
     SetCommande({ ...commande, [name]: value });
   };
+
+  // Fonction pour passer à l'étape Review
+  const goToReview = () => {
+    // Validation des champs obligatoires
+    if (!commande.nom || !commande.prenom || !commande.numero_Tel1_Inscrit || !commande.email || 
+        !Adresse.Gouvernorat || !Adresse.Ville || !Adresse.adresse || !commande.mode_livraison || !commande.mode_paiement) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    if (viewTransporteur && !commande.livreur) {
+      toast.error("Veuillez sélectionner un transporteur");
+      return;
+    }
+
+    SetViewReview(true);
+    setCurrentStep(4);
+  };
+
+  // Fonction pour retourner à l'étape précédente
+  const goBackToAddress = () => {
+    SetViewReview(false);
+    setCurrentStep(2);
+  };
+
+  // Fonction pour soumettre la commande (SANS REDIRECTION)
   const onSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!adherent?._id) {
+      toast.error("Veuillez d'abord vérifier votre identifiant adhérent");
+      return;
+    }
+
     commande.adresse_livraison = Adresse;
     commande.item = products;
     commande.total = MontanTotal;
     commande.adherent = adherent._id;
     commande.client = commande.nom;
     setIsDisabled(true);
+    
     try {
-      await axios
-        .post(process.env.API_URL + "/vente_enligne", {
-          client: commande.nom,
-          nom: commande.nom,
-          prenom: commande.prenom,
-          email: commande.email,
-          numero_Tel1_Inscrit: commande.numero_Tel1_Inscrit,
-          adherent: adherent._id,
-          mode_livraison: commande.mode_livraison,
-          mode_paiement: commande.mode_paiement,
-          livreur: commande.livreur,
-          item: products,
-          adresse_livraison: Adresse,
-        })
-        .then((response) => {
-          SetViewAdherent(false);
-          SetViewAdresse(false);
-          SetViewSecces(true);
-          localStorage.removeItem("products");
-        });
+      const response = await axios.post(process.env.API_URL + "/vente_enligne", {
+        client: commande.nom,
+        nom: commande.nom,
+        prenom: commande.prenom,
+        email: commande.email,
+        numero_Tel1_Inscrit: commande.numero_Tel1_Inscrit,
+        adherent: adherent._id,
+        mode_livraison: commande.mode_livraison,
+        mode_paiement: commande.mode_paiement,
+        livreur: commande.livreur,
+        item: products,
+        adresse_livraison: Adresse,
+        total: MontanTotal,
+        identifiant_adherent: Identifiant,
+        statut: "en_attente"
+      });
+
+      if (response?.status === 200) {
+        // SUCCÈS - Commande créée dans la base de données
+        SetViewReview(false);
+        SetViewSecces(true);
+        setCurrentStep(5);
+        
+        // Nettoyer le panier
+        localStorage.removeItem("products");
+        
+        toast.success("✅ Commande créée avec succès !");
+      }
     } catch (error) {
-      console.log(error);
+      console.log("Erreur détaillée:", error);
+      setIsDisabled(false);
+      toast.error("Erreur lors de la création de la commande. Veuillez réessayer.");
     }
   };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      findAdherentByIdentifiant();
+    }
+  };
+
+  // Fonction pour calculer la date de livraison estimée
+  const getEstimatedDeliveryDate = () => {
+    const today = new Date();
+    const deliveryDate = new Date(today);
+    deliveryDate.setDate(today.getDate() + 7);
+    return deliveryDate.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  // Composant pour les étapes
+  const StepIndicator = () => (
+    <div className="flex items-center justify-between mb-8 max-w-4xl mx-auto">
+      {[
+        { number: 1, label: "Adhérent", icon: FaUser },
+        { number: 2, label: "Adresse", icon: FaFileInvoice },
+        { number: 3, label: "Paiement", icon: FaCreditCard },
+        { number: 4, label: "Review", icon: FaCheck },
+        { number: 5, label: "Confirmé", icon: FaCheckCircle }
+      ].map((step, index) => (
+        <div key={step.number} className="flex items-center">
+          <div className={`flex flex-col items-center ${currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+              currentStep >= step.number 
+                ? 'bg-blue-600 border-blue-600 text-white' 
+                : 'border-gray-300 bg-white'
+            }`}>
+              {currentStep > step.number ? (
+                <FaCheck className="text-white" />
+              ) : (
+                <step.icon />
+              )}
+            </div>
+            <span className="text-xs mt-2 font-medium">{step.label}</span>
+          </div>
+          {index < 4 && (
+            <div className={`w-16 h-1 mx-2 ${currentStep > step.number ? 'bg-blue-600' : 'bg-gray-300'}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <>
-
-
-      {viewFindAdherent && (
-        <div>
-          <div className="p-10 max-sm:p-4">
-            <h3 className="text-start font-medium text-2xl my-3 uppercase">
-              Informations
-            </h3>
-            <div className=" border border-slate-200">
-              <div className=" uppercase grid grid-cols-2 max-sm:grid-cols-1 p-[30px] lg:space-x-3 max-md:space-x-3 max-sm:space-x-0 max-lg:space-x-3 ">
-                <div>
-                  <label htmlFor="identifiant">Identifiant Adherent</label>
-                  <input
-                    type="text"
-                    name="identifiant"
-                    id="identifiant"
-                    placeholder="Identifiant Adherent"
-                    onChange={(e) => SetIdentiafiant(e.target.value)}
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                </div>
-                <div>
-                  <button
-                    onClick={() => {
-                      findAdherentByIdentifiant();
-                    }}
-                    className="uppercase lg:mt-[34px] max-md:mt-[34px] max-lg:mt-[34px] max-sm:w-full max-sm:text-xs bg-[#aacbda] hover:bg-[#fff] hover:text-[#000] max-sm:px-2 max-sm:py-3 px-5 py-[9px] text-white border-2 border-[#aacbda] uppercase font-bold"
-                    style={{ borderRadius: "15px" }}
-                  >
-                    Verifier Adherent
-                  </button>
-                </div>
-              </div>
-              <div className="uppercase grid grid-cols-2 max-sm:grid-cols-1 px-[30px] mt-[-20px] pb-[30px] lg:space-x-3 max-md:space-x-3 max-sm:space-x-0 max-lg:space-x-3">
-                <div>
-                  <label htmlFor="nom-adh" className="font-medium">
-                    Nom Adherent
-                  </label>
-                  <input
-                    type="text"
-                    id="nom-adh"
-                    placeholder="Nom Adherent"
-                    name="nom-adh"
-                    disabled
-                    defaultValue={adherent?.nom}
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-[#e9ecef] text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="prenom-adh" className="font-medium uppercase">
-                    Prenom Adherent
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Prenom Adherent"
-                    disabled
-                    id="prenom-adh"
-                    name="prenom-adh"
-                    defaultValue={adherent?.prenom}
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-[#e9ecef] text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                </div>
-              </div>
+      <div className="container mx-auto px-4 py-8">
+        <StepIndicator />
+        
+        {/* Section Date de livraison estimée */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-blue-800">Date de livraison estimée</h3>
+              <p className="text-blue-600">{getEstimatedDeliveryDate()}</p>
             </div>
-            <ToastContainer position="top-left" />
+          
           </div>
         </div>
-      )}
 
-      {/* details */}
-      {viewAdresse && (
-        <div className="p-10 max-sm:p-4 max-md:p-4">
-          <div className="grid grid-cols-2 max-sm:grid-cols-1 max-md:grid-cols-1">
-            <div className="px-10 max-sm:px-4 max-md:px-4">
-              <h3 className="text-xl uppercase text-start py-3">
-                Billing Details
-              </h3>
-              <div className="grid grid-cols-2 max-sm:grid-cols-1 my-4 lg:space-x-3 max-md:space-x-3 max-lg:space-x-3 max-sm:space-x-0">
-                <div>
-                  <label htmlFor="nom" className="font-medium">
-                    Nom
-                  </label>
-                  <input
-                    type="text"
-                    name="nom"
-                    onChange={onChangeInput}
-                    placeholder="Nom "
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                  <span className="error-message">
-                    {errors.nom && "nom est obligatoire"}
-                  </span>
-                </div>
-                <div>
-                  <label htmlFor="prenom" className="font-medium">
-                    Prenom
-                  </label>
-                  <input
-                    type="text"
-                    name="prenom"
-                    placeholder="Prenom "
-                    onChange={onChangeInput}
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                  <span className="error-message">
-                    {errors.prenom && "prenom est obligatoire"}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 max-sm:grid-cols-1 my-4 lg:space-x-3 max-md:space-x-3 max-lg:space-x-3 max-sm:space-x-0">
-                <div>
-                  <label htmlFor="telephone" className="font-medium my-2">
-                    Numero Telephone
-                  </label>
-                  <input
-                    type="tel"
-                    name="numero_Tel1_Inscrit"
-                    placeholder="Numero Telephone"
-                    onChange={onChangeInput}
-                    pattern="[0-9]{2}[0-9]{3}[0-9]{3}"
-                    required
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                  <span className="error-message">
-                    {errors.numero_Tel1_Inscrit &&
-                      "Numero téléphone est obligatoire"}
-                  </span>
-                </div>
-                <div>
-                  <label htmlFor="email" className="font-medium my-2">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="Email"
-                    name="email"
-                    onChange={onChangeInput}
-                    className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                    style={{ borderRadius: "15px" }}
-                  />
-                  <span className="error-message">
-                    {errors.email && "email est obligatoire"}
-                  </span>
-                </div>
-              </div>
-              <div className="my-4">
-                <label>Gouvernorat</label>
-
-                <select
-                  className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                  style={{ borderRadius: "15px" }}
-                  onChange={handleGouvernoratChange}
-                  id="Gouvernorat"
-                  value={NomGouvernerat}
-                >
-                  <option value=""> Selectionnez votre Gouvernorat</option>
-
-                  {Gouvernerats.Gouvernorat.map((item, index) => (
-                    <option key={index} value={item.Nom}>
-                      {item.Nom}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="my-4">
-                <label>Ville</label>
-                <select
-                  className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                  style={{ borderRadius: "15px" }}
-                  onChange={(e) => {
-                    Adresse.Ville = e.target.value;
-                  }}
-                  name="ville"
-                >
-                  <option value=""> Selectionnez votre Ville</option>
-
-                  {cities.map((item, index) => (
-                    <option key={index} value={item.value}>
-                      {item.Nom}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="my-4">
-                <label htmlFor="address" className="font-medium my-2">
-                  Adresse et Code Postal
+        {viewFindAdherent && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 className="text-2xl font-bold mb-6 text-gray-800">Informations Adhérent</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="identifiant" className="font-medium text-gray-700">
+                  Identifiant Adhérent *
                 </label>
                 <input
                   type="text"
-                  placeholder="Adresse et Code Postal"
-                  name="adresse"
-                  {...register("state", { required: true })}
+                  name="identifiant"
+                  id="identifiant"
+                  placeholder="Saisissez votre identifiant adhérent"
+                  value={Identifiant}
                   onChange={(e) => {
-                    Adresse.adresse = e.target.value;
+                    SetIdentiafiant(e.target.value);
+                    setIdentifiantError("");
                   }}
-                  className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                  style={{ borderRadius: "15px" }}
+                  onKeyPress={handleKeyPress}
+                  className={`mt-2 w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    identifiantError ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
-                <span className="error-message">
-                  {errors.state && "adresse est obligatoire"}
-                </span>
+                {identifiantError && (
+                  <p className="text-red-500 text-sm mt-1">{identifiantError}</p>
+                )}
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={findAdherentByIdentifiant}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+                >
+                  Vérifier Adhérent
+                </button>
               </div>
             </div>
-
-            {products && products.length > 0 ? (
-              <div className="p-10 max-sm:p-4 border border-slate-200 bg-[#f9f9f9]">
-                <ul className="flex flex-row max-sm:space-x-16 space-x-52 max-md:space-x-44 max-lg:space-x-24 max-xl:space-x-32 border-b-2 pb-5">
-                  <li>Photo</li>
-                  <li>Produit</li>
-                  <li>Totale</li>
-                </ul>
-
-                {products.map((item, index) => (
-                  <ul
-                    key={index}
-                    className="flex flex-row border-b-2 py-[5px] max-sm:space-x-14 space-x-48 max-md:space-x-[148px] max-lg:space-x-[60px] max-xl:space-x-[100px]"
-                  >
-                    <li>
-                      <img
-                        src={process.env.API_URL + item.photo}
-                        alt="img"
-                        className="w-[75px] max-sm:w-[40px]"
-                      />
-                    </li>
-                    <li className="my-auto">
-                      {item.nom} × {item.quantity}
-                    </li>
-                    <li className="my-auto">
-                      {parseFloat(item.total).toFixed(3)}
-                    </li>
-                  </ul>
-                ))}
-
-                <ul className="border-b-2 pb-5">
-                  <li className="pt-5 space-x-[440px] max-sm:space-x-32 max-md:space-x-96 max-lg:space-x-40 max-xl:space-x-72 flex flex-row">
-                    <span>Sous Total</span>
-                    <span className="text-[#ff4c3b]">
-                      {" "}
-                      {calculateTotalItem()} DT
-                    </span>
-                  </li>
-                  <li className="pt-5 space-x-60 max-sm:space-y-5 max-md:space-x-48 max-sm:space-x-0 max-lg:space-x-9 max-xl:space-x-32 flex flex-row max-sm:flex-col">
-                    <span className="my-auto">Mode de Livraison</span>
-                    <p className="grid w-[100%] xl:w-[40%] lg:w-[40%] ">
-                      <select
-                        className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                        style={{ borderRadius: "15px" }}
-                        onChange={handleChangeInput}
-                        name="mode_livraison"
-                      >
-                        <option value="">Mode de Livraison</option>
-                        {modelivraisons.map((m) => (
-                          <option value={m._id} key={m._id}>
-                            {m.nom}
-                          </option>
-                        ))}
-                      </select>
-                    </p>
-                  </li>
-
-                  {viewTransporteur && (
-                    <>
-                      <li className="pt-5 space-x-60 max-sm:space-y-5 max-md:space-x-48 max-sm:space-x-0 max-lg:space-x-9 max-xl:space-x-32 flex flex-row max-sm:flex-col">
-                        <span className="my-auto"> Transporteur</span>
-                        <p className="grid w-[100%] xl:w-[40%] lg:w-[40%] ">
-                          <select
-                            className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                            style={{ borderRadius: "15px" }}
-                            onChange={onChangeSelectTransporteur}
-                            name="livreur"
-                          >
-                            <option value="">Mode de transport</option>
-                            {Transporteurs.map((m) => (
-                              <option value={m._id} key={m._id}>
-                                {m.nom_Livreur}
-                              </option>
-                            ))}
-                          </select>
-                        </p>
-                      </li>
-
-                      <li className="py-5 space-x-[440px] max-sm:space-x-40 max-md:space-x-96 max-lg:space-x-44 max-xl:space-x-[310px] flex flex-row">
-                        <span> Frais de Transport</span>
-                        <span className="text-[#ff4c3b]">
-                          {" "}
-                          {FraisTransport} DT
-                        </span>
-                      </li>
-                    </>
-                  )}
-                  <li className="pt-5 space-x-[236px] max-sm:space-y-5 max-md:space-x-48 max-sm:space-x-0 max-lg:space-x-7 max-xl:space-x-32 flex flex-row max-sm:flex-col">
-                    <span className="my-auto">Mode de Paiement</span>
-                    <p className="grid w-[100%] xl:w-[40%] lg:w-[40%] ">
-                      <select
-                        className="my-3 MuiInput-input w-full text-sm leading-5 px-3 py-3 rounded-none shadow-md dark:shadow-slate-900  focus:shadow-lg border border-solid border-slate-300 focus:border-darkmode-500 dark:focus:border-darkmode-500 dark:border-slate-600 bg-white text-black  focus-visible:outline-0"
-                        style={{ borderRadius: "15px" }}
-                        onChange={onChangeSelectPaiement}
-                        name="mode_paiement"
-                      >
-                        <option value="">Mode de Paiement</option>
-                        {modePaiement.map((m) => (
-                          <option value={m._id} key={m._id}>
-                            {m.mode}
-                          </option>
-                        ))}
-                      </select>
-                    </p>
-                  </li>
-                </ul>
-                <ul>
-                  <li className="py-5 space-x-[440px] max-sm:space-x-40 max-md:space-x-96 max-lg:space-x-44 max-xl:space-x-[310px] flex flex-row">
-                    <span>Timber</span>
-                    <span className="text-[#ff4c3b]">{timber} DT</span>
-                  </li>
-                  <li className="pb-5 space-x-[455px] max-sm:space-x-44 max-md:space-x-[400px] max-lg:space-x-48 max-xl:space-x-80 flex flex-row">
-                    <span>Total</span>
-                    <span className="text-[#ff4c3b]">{MontanTotal}DT</span>
-                  </li>
-                </ul>
+            
+            {adherent && (
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-green-800">
+                      Adhérent vérifié: {adherent.nom} {adherent.prenom}
+                    </h4>
+                    <p className="text-sm text-green-600">Identifiant: {Identifiant}</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              ""
             )}
           </div>
+        )}
 
-          <div className="flex lg:justify-between max-md:justify-between max-lg:justify-between max-sm:space-x-5 max-md:space-x-12 max-lg:space-x-12 max-sm:p-2 max-md:p-2 max-lg:p-4 max-xl:p-4 px-10 mt-3">
-            <div>
+        {/* Étape Adresse */}
+        {viewAdresse && adherent && !viewReview && !viewSucces && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 className="text-2xl font-bold mb-6 text-gray-800">Informations de Livraison</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label htmlFor="nom" className="font-medium text-gray-700">
+                      Nom *
+                    </label>
+                    <input
+                      type="text"
+                      name="nom"
+                      value={commande.nom}
+                      onChange={onChangeInput}
+                      placeholder="Votre nom"
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="prenom" className="font-medium text-gray-700">
+                      Prénom *
+                    </label>
+                    <input
+                      type="text"
+                      name="prenom"
+                      value={commande.prenom}
+                      placeholder="Votre prénom"
+                      onChange={onChangeInput}
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label htmlFor="telephone" className="font-medium text-gray-700">
+                      Numéro Téléphone *
+                    </label>
+                    <input
+                      type="tel"
+                      name="numero_Tel1_Inscrit"
+                      value={commande.numero_Tel1_Inscrit}
+                      placeholder="Numéro Telephone"
+                      onChange={onChangeInput}
+                      pattern="[0-9]{2}[0-9]{3}[0-9]{3}"
+                      required
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="font-medium text-gray-700">
+                      Email *
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="Email"
+                      name="email"
+                      value={commande.email}
+                      onChange={onChangeInput}
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="font-medium text-gray-700">Gouvernorat *</label>
+                    <select
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={handleGouvernoratChange}
+                      id="Gouvernorat"
+                      value={NomGouvernerat}
+                      required
+                    >
+                      <option value="">Sélectionnez votre Gouvernorat</option>
+                      {Gouvernerats.Gouvernorat.map((item, index) => (
+                        <option key={index} value={item.Nom}>
+                          {item.Nom}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-medium text-gray-700">Ville *</label>
+                    <select
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => {
+                        Adresse.Ville = e.target.value;
+                      }}
+                      name="ville"
+                      required
+                    >
+                      <option value="">Sélectionnez votre Ville</option>
+                      {cities.map((item, index) => (
+                        <option key={index} value={item.value}>
+                          {item.Nom}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="address" className="font-medium text-gray-700">
+                      Adresse et Code Postal *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Adresse et Code Postal"
+                      name="adresse"
+                      onChange={(e) => {
+                        Adresse.adresse = e.target.value;
+                      }}
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h4 className="font-semibold text-lg mb-4">Options de Livraison et Paiement</h4>
+                
+                <div className="mb-4">
+                  <label className="font-medium text-gray-700">Mode de Livraison *</label>
+                  <select
+                    className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChangeInput}
+                    name="mode_livraison"
+                    required
+                  >
+                    <option value="">Mode de Livraison</option>
+                    {modelivraisons.map((m) => (
+                      <option value={m._id} key={m._id}>
+                        {m.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {viewTransporteur && (
+                  <div className="mb-4">
+                    <label className="font-medium text-gray-700">Transporteur *</label>
+                    <select
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={onChangeSelectTransporteur}
+                      name="livreur"
+                      required
+                    >
+                      <option value="">Mode de transport</option>
+                      {Transporteurs.map((m) => (
+                        <option value={m._id} key={m._id}>
+                          {m.nom_Livreur}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="font-medium text-gray-700">Mode de Paiement *</label>
+                  <select
+                    className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={onChangeSelectPaiement}
+                    name="mode_paiement"
+                    required
+                  >
+                    <option value="">Mode de Paiement</option>
+                    {modePaiement.map((m) => (
+                      <option value={m._id} key={m._id}>
+                        {m.mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between mt-8">
               <button
-                onClick={() => {
-                  navigate("/");
-                }}
-                style={{ borderRadius: "15px" }}
-                className="max-sm:px-2 hover:bg-white hover:text-black text-white border-[#ff4c3b] border-2 px-7 py-2 bg-[#ff4c3b]"
+                onClick={() => navigate("/")}
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200"
               >
-                Precendent
+                Retour au panier
+              </button>
+              <button
+                onClick={goToReview}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+              >
+                Continuer 
               </button>
             </div>
-            <div>
+          </div>
+        )}
+
+        {/* Étape Review */}
+        {viewReview && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 className="text-2xl font-bold mb-6 text-gray-800">Review de la Commande</h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Détails de la commande */}
+              <div>
+                <h4 className="font-semibold text-lg mb-4 text-gray-700">Détails de la Commande</h4>
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium">Adhérent:</span>
+                    <span>{adherent?.nom} {adherent?.prenom}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium">Identifiant:</span>
+                    <span>{Identifiant}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Client:</span>
+                    <span>{commande.nom} {commande.prenom}</span>
+                  </div>
+                </div>
+
+                <h4 className="font-semibold text-lg mb-4 text-gray-700">Adresse de Livraison</h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="mb-1"><strong>Adresse:</strong> {Adresse.adresse}</p>
+                  <p className="mb-1"><strong>Ville:</strong> {Adresse.Ville}</p>
+                  <p className="mb-1"><strong>Gouvernorat:</strong> {Adresse.Gouvernorat}</p>
+                  <p className="mb-1"><strong>Téléphone:</strong> {commande.numero_Tel1_Inscrit}</p>
+                  <p><strong>Email:</strong> {commande.email}</p>
+                </div>
+              </div>
+
+              {/* Détails des produits */}
+              <div>
+                <h4 className="font-semibold text-lg mb-4 text-gray-700">Détails des Produits</h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  {products.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={process.env.API_URL + item.photo}
+                          alt={item.nom}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-800">{item.nom}</p>
+                          <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
+                          <p className="text-sm text-gray-600">Prix unitaire: {item.prix} DT</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-800">{parseFloat(item.total).toFixed(3)} DT</p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Récapitulatif des prix */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-600">Sous-total:</span>
+                      <span className="font-medium">{calculateTotalItem()} DT</span>
+                    </div>
+                    {viewTransporteur && (
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-600">Frais de transport:</span>
+                        <span className="font-medium">{FraisTransport} DT</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-600">Timbre:</span>
+                      <span className="font-medium">{timber} DT</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                      <span className="font-semibold text-lg">Total:</span>
+                      <span className="font-bold text-lg text-blue-600">{MontanTotal} DT</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800">
+                    <strong>Info:</strong> La commande sera enregistrée et visible dans la liste des commandes de l'administration.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between mt-8">
+              <button
+                onClick={goBackToAddress}
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200"
+              >
+                Modifier les informations
+              </button>
               <button
                 disabled={isDisabled}
-                style={{ borderRadius: "15px" }}
-                className="max-sm:px-2 hover:bg-white hover:text-black text-white border-[#ff4c3b] border-2 px-7 py-2 bg-[#ff4c3b]"
                 onClick={onSubmit}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Passer la commande
+                {isDisabled ? "Création en cours..." : "Confirmer la commande"}
               </button>
-               <Link to="confirmation">
-             
-              </Link> 
             </div>
+          </div>
+        )}
+
+        {/* Étape Commande confirmée */}
+        {viewSucces && (
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-6 text-center">
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+                <FaCheckCircle className="text-green-600 text-3xl" />
+              </div>
+            </div>
+            
+            <h3 className="text-2xl font-bold mb-4 text-green-800">Commande Confirmée !</h3>
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+              <p className="text-lg font-semibold text-green-800 mb-4">
+                Votre commande a été enregistrée avec succès!
+              </p>
+              
+              <div className="text-left bg-white rounded p-4 mb-4">
+                <h4 className="font-semibold mb-2 text-gray-800">Détails de la commande:</h4>
+                <p><strong>Adhérent:</strong> {adherent?.nom} {adherent?.prenom}</p>
+                <p><strong>Client:</strong> {commande.nom} {commande.prenom}</p>
+                <p><strong>Total:</strong> {MontanTotal} DT</p>
+                <p><strong>Statut:</strong> <span className="text-green-600 font-semibold">En attente de traitement</span></p>
+              </div>
+
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+              <button
+                onClick={() => navigate("/")}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200"
+              >
+                Retour à l'accueil
+              </button>
+              <button
+                onClick={() => {
+                  SetViewSecces(false);
+                  SetViewAdherent(true);
+                  setCurrentStep(1);
+                  SetIdentiafiant("");
+                  SetAdherent(null);
+                }}
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200"
+              >
+                Nouvelle commande
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Message de chargement pendant la création */}
+      {isDisabled && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg text-center max-w-md">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-lg font-semibold mb-2">Création de la commande...</p>
+            <p className="text-sm text-gray-600">La commande est en cours d'enregistrement</p>
           </div>
         </div>
       )}
 
-      {viewSucces && (
-        <div className="p-20">
-          <div className="flex flex-col text-center space-y-5  bg-[#f9f9f9] p-32">
-            <h3 className="text-center">
-              <FaCheckCircle className="mx-auto text-4xl text-[#4ead4e]" />
-            </h3>
-            <h3 className="text-4xl font-medium uppercase">Merci</h3>
-            <p className="text-[#777777] text-xl">
-              Votre commande a bien été enregistrée !
-            </p>
-            <p className="text-[#777777] text-xl">
-              Attendez-vous la validation de l'adherent {adherent.nom}
-            </p>
-          </div>
-        </div>
-      )}
+      <ToastContainer position="top-left" />
     </>
   );
 };
 
 export default Registre;
+

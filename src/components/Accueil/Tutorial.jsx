@@ -27,7 +27,7 @@ const TABS = [
       { title: "PEAUX NORMALES", sub: "HYDRATATION ÉQUILIBRÉE" },
       { title: "PEAUX SENSIBLES", sub: "TOLÉRANCE & APAISEMENT" },
     ],
-    heroImage: "/images/hero-corps.png",
+    heroImage: "/images/06.png",
   },
   {
     key: "visage",
