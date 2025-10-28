@@ -20,8 +20,7 @@ function Carousel() {
   // Fallback locaux
   const LOCAL_SLIDES = [
     { imgUrl: "/images/hero1.svg", title: "welcome to beauty", description: "BEAUTY PRODUCTS", link: "/categorie" },
-    { imgUrl: "/images/hero-capillaire.png", title: "nos soins", description: "CAPILLAIRE & VISAGE", link: "/categorie?libelle=CAPILLAIRE" },
-    { imgUrl: "/images/hero-pharma.png", title: "nouveautés", description: "PHARMA", link: "/categorie?libelle=PHARMA" },
+
   ];
 
   const FORCE_LOCAL =

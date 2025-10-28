@@ -8,32 +8,32 @@ import { FaArrowRight } from "react-icons/fa";
 const Doctors = () => {
   const data = [
     {
-      img: "/src/assets/img/doc1.jpg",
+      img: "/images/placeholder.svg",
       name: "Dr. Serena Mitchell",
       specialties: "Orthopedic Surgeon",
     },
     {
-      img: "/src/assets/img/doc2.jpg",
+      img: "/images/placeholder.svg",
       name: "Dr. Julian Bennett",
       specialties: "Cardiologist",
     },
     {
-      img: "/src/assets/img/doc3.jpg",
+      img: "/images/placeholder.svg",
       name: "Dr. Camila Rodriguez",
       specialties: "Pediatrician",
     },
     {
-      img: "/src/assets/img/doc4.jpg",
+      img: "/images/placeholder.svg",
       name: "Dr. Victor Nguyen",
       specialties: "Neurologist",
     },
     {
-      img: "/src/assets/img/doc5.jpg",
+      img: "/images/placeholder.svg",
       name: "Dr. Ethan Carter",
       specialties: "Dermatologist",
     },
     {
-      img: "/src/assets/img/doc6.jpg",
+      img: "/images/placeholder.svg",
       name: "Dr. Olivia Martinez",
       specialties: "Ophthalmologist",
     },

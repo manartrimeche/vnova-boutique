@@ -6,7 +6,7 @@ import react from "@vitejs/plugin-react";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   
-  const env = loadEnv("mock", process.cwd(), "");
+  const env = loadEnv("map", process.cwd(), "");
   const processEnValues = {
     "process.env": Object.entries(env).reduce((prev, [key, val]) => {
       return {

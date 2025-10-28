@@ -436,7 +436,7 @@ const Navbar = () => {
           <div className="max-w-screen-2xl mx-auto h-16 lg:h-20 px-4 lg:px-6 flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="shrink-0">
-              <img src="../../images/logo-vn.png" alt="VNOVA" className="h-8 lg:h-12 w-auto" />
+              <img src="/images/logo-vn.png" alt="VNOVA" className="h-8 lg:h-12 w-auto" />
             </Link>
 
             {/* MENU PRINCIPAL */}

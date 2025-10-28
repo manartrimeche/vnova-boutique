@@ -12,13 +12,23 @@ const Product = () => {
     navigate("/product_details", { state: item });
   };
   const [produits, setproduits] = useState([]);
+
+  const VITE = typeof import.meta !== "undefined" ? import.meta.env : {};
+  const API = (VITE?.VITE_API_URL || process.env.API_URL || "https://api.vnova.tn/api").replace(/\/+$/, "");
+  const API_ORIGIN = API.replace(/\/api$/, "");
+
+  const buildImg = (raw = "") => {
+    if (!raw) return "/images/placeholder.svg";
+    if (/^https?:\/\//i.test(raw) || String(raw).startsWith("data:")) return raw;
+    const path = raw.startsWith("/") ? raw : `/${raw}`;
+    return `${API_ORIGIN}${path}`;
+  };
   const getallproduits = async () => {
     try {
-      await axios
-        .get(process.env.API_URL + "/produit_en_stock")
-        .then((response) => {
-          setproduits(response?.data?.result);
-        });
+      const url = `${API}/produit_en_stock`;
+      await axios.get(url).then((response) => {
+        setproduits(response?.data?.result || []);
+      });
     } catch (error) {
       console.log(error);
     }
@@ -100,7 +110,7 @@ const Product = () => {
               }}
             >
               <img
-                src={process.env.API_URL + item?.photo}
+                src={buildImg(item?.photo)}
                 alt=""
                 className="h-[50%] w-[80%] justify-center text-center space-y-1"
                 style={{ margin: "auto" }}
