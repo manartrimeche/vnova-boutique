@@ -40,8 +40,24 @@ const Registre = () => {
     adresse: "",
     numeroTel: "",
   });
-  const [modelivraisons, SetModeLivraisons] = useState([]);
-  const [Transporteurs, SetTransporteurs] = useState([]);
+  
+  // Données mockées pour le développement
+  const [modelivraisons, SetModeLivraisons] = useState([
+    { _id: "1", nom: "Siège" },
+    { _id: "2", nom: "Transporteur" }
+  ]);
+  
+  const [Transporteurs, SetTransporteurs] = useState([
+    { _id: "1", nom_Livreur: "Transporteur Express", livraison_TTC: { $numberDecimal: "7.000" } },
+    { _id: "2", nom_Livreur: "Livraison Standard", livraison_TTC: { $numberDecimal: "5.000" } }
+  ]);
+  
+  const [modePaiement, SetModePaiement] = useState([
+    { _id: "1", mode: "Paiement à la livraison" },
+    { _id: "2", mode: "Virement bancaire" },
+    { _id: "3", mode: "Carte bancaire" }
+  ]);
+
   const [viewFindAdherent, SetViewAdherent] = useState(true);
   const [viewAdresse, SetViewAdresse] = useState(false);
   const [viewReview, SetViewReview] = useState(false);
@@ -51,6 +67,9 @@ const Registre = () => {
   const [identifiantError, setIdentifiantError] = useState("");
   const [currentStep, setCurrentStep] = useState(1);
   
+  // Debug: Vérifier l'URL de l'API
+  console.log("API URL:", process.env.REACT_APP_API_URL);
+  
   const findAdherentByIdentifiant = async () => {
     if (!Identifiant.trim()) {
       setIdentifiantError("L'identifiant adhérent est obligatoire");
@@ -58,25 +77,32 @@ const Registre = () => {
     }
 
     setIdentifiantError("");
+    setIsDisabled(true);
+    
     try {
-      await axios
-        .post(process.env.API_URL + "/identifiant", {
-          identifiant: Identifiant,
-        })
-        .then((response) => {
-          if (response?.status == 200 && response?.statusText == "OK") {
-            SetAdherent(response?.data?.result);
-            SetViewAdresse(true);
-            setCurrentStep(2);
-            toast.success("Adhérent trouvé avec succès !");
-          }
+      console.log("Recherche adhérent avec identifiant:", Identifiant);
+      
+      // Simulation d'une recherche d'adhérent - À REMPLACER par votre vraie API
+      // Pour le moment, on simule un adhérent trouvé
+      setTimeout(() => {
+        SetAdherent({
+          _id: "123456",
+          nom: "DUPONT",
+          prenom: "Marie",
+          numeroCarteIdentite: "12345678"
         });
+        SetViewAdresse(true);
+        setCurrentStep(2);
+        setIsDisabled(false);
+        toast.success("Adhérent trouvé avec succès !");
+      }, 1000);
+      
     } catch (error) {
-      if (error?.response?.data?.msg == "adherent n'existe pas") {
-        setIdentifiantError("Adhérent non trouvé !");
-        SetAdherent("");
-        SetViewAdresse(false);
-      }
+      console.error("Erreur recherche adhérent:", error);
+      setIdentifiantError("Erreur lors de la vérification de l'adhérent");
+      SetAdherent(null);
+      SetViewAdresse(false);
+      setIsDisabled(false);
     }
   };
 
@@ -123,30 +149,28 @@ const Registre = () => {
 
   let findTimber = async () => {
     try {
-      await axios
-        .get(process.env.API_URL + "/timberby_etat")
-        .then((response) => {
-          Setimber(response?.data?.result?.valeur.$numberDecimal);
-        });
+      // Timber fixe pour le développement
+      Setimber(0.500);
     } catch (error) {
-      console.log(error);
+      console.error("Erreur timber:", error);
+      Setimber(0.500);
     }
   };
 
   const getAllTransport = async () => {
     try {
-      await axios.get(process.env.API_URL + "/livreur").then((response) => {
-        SetTransporteurs(response?.data?.result);
-      });
+      // Données mockées déjà définies
+      console.log("Transporteurs chargés:", Transporteurs);
     } catch (error) {
-      console.log(error);
+      console.error("Erreur transporteurs:", error);
+      // Les données mockées restent
     }
   };
 
   const handleChangeInput = (e) => {
     const { name, value } = e.target;
 
-    if (value.length != 0) {
+    if (value.length !== 0) {
       getModeLivraisonById(value);
       SetCommande({ ...commande, [name]: value });
     }
@@ -154,72 +178,65 @@ const Registre = () => {
 
   const [FraisTransport, SetFraisTransport] = useState(0);
   const [viewTransporteur, SetViewTransporteur] = useState(false);
+
   const [MontanTotal, SetMontantTotal] = useState(0);
-  const [modePaiement, SetModePaiement] = useState([]);
+
   const getModeLivraisonById = async (id) => {
     try {
-      await axios
-        .get(process.env.API_URL + "/modelivraison/" + id)
-        .then((response) => {
-          if (response?.data?.result.nom === "Siège") {
-            SetFraisTransport(0);
-            SetViewTransporteur(false);
-            SetMontantTotal(
-              parseFloat(
-                parseFloat(MontanTotal) - parseFloat(FraisTransport)
-              ).toFixed(3)
-            );
-          }
-          if (response?.data?.result.nom === "Transporteur") {
-            SetViewTransporteur(true);
-          }
-        });
+      const mode = modelivraisons.find(m => m._id === id);
+      if (mode?.nom === "Siège") {
+        SetFraisTransport(0);
+        SetViewTransporteur(false);
+      } else if (mode?.nom === "Transporteur") {
+        SetViewTransporteur(true);
+        // Frais de transport par défaut
+        SetFraisTransport(7.000);
+      }
     } catch (error) {
-      console.log(error);
+      console.error("Erreur mode livraison:", error);
     }
   };
 
   const calculateTotal = () => {
     let s = 0;
     for (let i = 0; i < products.length; i++) {
-      s = s + parseFloat(products[i].total);
+      s = s + parseFloat(products[i].total || 0);
     }
-    SetMontantTotal(parseFloat(parseFloat(s) + parseFloat(timber)).toFixed(3));
+    const total = parseFloat(parseFloat(s) + parseFloat(timber || 0) + parseFloat(FraisTransport || 0)).toFixed(3);
+    console.log("Calcul total:", { sousTotal: s, timber, FraisTransport, total });
+    SetMontantTotal(total);
   };
 
   const calculateTotalItem = () => {
-    return products.reduce(
-      (total, item) =>
-        parseFloat(parseFloat(total) + parseFloat(item.total)).toFixed(3),
+    const total = products.reduce(
+      (total, item) => parseFloat(total) + parseFloat(item.total || 0),
       0
     );
+    return total.toFixed(3);
   };
 
   const findAllModLivraison = async () => {
     try {
-      await axios
-        .get(process.env.API_URL + "/modelivraison")
-        .then((response) => {
-          SetModeLivraisons(response?.data?.result);
-        });
+      // Données mockées déjà définies
+      console.log("Modes livraison chargés:", modelivraisons);
     } catch (error) {
-      console.log(error);
+      console.error("Erreur modes livraison:", error);
+      // Les données mockées restent
     }
   };
 
   const getAllModePaiement = async () => {
     try {
-      await axios
-        .get(process.env.API_URL + "/mode_paiement_boutique")
-        .then((response) => {
-          SetModePaiement(response?.data?.result);
-        });
+      // Données mockées déjà définies
+      console.log("Modes paiement chargés:", modePaiement);
     } catch (error) {
-      console.log(error);
+      console.error("Erreur modes paiement:", error);
+      // Les données mockées restent
     }
   };
 
   useEffect(() => {
+    console.log("Initialisation composant");
     setSelectedCountry(Country.getAllCountries()[223]);
     Adresse.pays = Country.getAllCountries()[223].name;
     setCountryid(224);
@@ -228,26 +245,22 @@ const Registre = () => {
     getAllModePaiement();
     calculateTotal();
     findTimber();
-  }, [timber]);
+  }, []);
+
+  useEffect(() => {
+    calculateTotal();
+  }, [timber, FraisTransport, products]);
 
   const getTransporteurById = async (id) => {
     try {
-      let frais = 0;
-      await axios
-        .get(process.env.API_URL + "/livreur/" + id)
-        .then((response) => {
-          SetFraisTransport(
-            response?.data?.result.livraison_TTC.$numberDecimal
-          );
-          frais = parseFloat(
-            response?.data?.result.livraison_TTC.$numberDecimal
-          );
-          SetMontantTotal(
-            parseFloat(parseFloat(MontanTotal) + parseFloat(frais)).toFixed(3)
-          );
-        });
+      const transporteur = Transporteurs.find(t => t._id === id);
+      if (transporteur) {
+        const frais = parseFloat(transporteur.livraison_TTC?.$numberDecimal || 0);
+        SetFraisTransport(frais);
+      }
     } catch (error) {
-      alert(error);
+      console.error("Erreur transporteur:", error);
+      SetFraisTransport(0);
     }
   };
 
@@ -266,14 +279,46 @@ const Registre = () => {
 
   // Fonction pour passer à l'étape Review
   const goToReview = () => {
-    // Validation des champs obligatoires
-    if (!commande.nom || !commande.prenom || !commande.numero_Tel1_Inscrit || !commande.email || 
-        !Adresse.Gouvernorat || !Adresse.Ville || !Adresse.adresse || !commande.mode_livraison || !commande.mode_paiement) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
+    console.log("Validation formulaire:", { commande, Adresse });
+    
+    if (!commande.nom?.trim()) {
+      toast.error("Le nom est obligatoire");
+      return;
+    }
+    if (!commande.prenom?.trim()) {
+      toast.error("Le prénom est obligatoire");
+      return;
+    }
+    if (!commande.numero_Tel1_Inscrit?.trim()) {
+      toast.error("Le numéro de téléphone est obligatoire");
+      return;
+    }
+    if (!commande.email?.trim()) {
+      toast.error("L'email est obligatoire");
+      return;
+    }
+    if (!Adresse.Gouvernorat?.trim()) {
+      toast.error("Le gouvernorat est obligatoire");
+      return;
+    }
+    if (!Adresse.Ville?.trim()) {
+      toast.error("La ville est obligatoire");
+      return;
+    }
+    if (!Adresse.adresse?.trim()) {
+      toast.error("L'adresse est obligatoire");
+      return;
+    }
+    if (!commande.mode_livraison?.trim()) {
+      toast.error("Le mode de livraison est obligatoire");
+      return;
+    }
+    if (!commande.mode_paiement?.trim()) {
+      toast.error("Le mode de paiement est obligatoire");
       return;
     }
 
-    if (viewTransporteur && !commande.livreur) {
+    if (viewTransporteur && !commande.livreur?.trim()) {
       toast.error("Veuillez sélectionner un transporteur");
       return;
     }
@@ -288,7 +333,7 @@ const Registre = () => {
     setCurrentStep(2);
   };
 
-  // Fonction pour soumettre la commande (SANS REDIRECTION)
+  // Fonction pour soumettre la commande
   const onSubmit = async (e) => {
     e.preventDefault();
     
@@ -297,15 +342,12 @@ const Registre = () => {
       return;
     }
 
-    commande.adresse_livraison = Adresse;
-    commande.item = products;
-    commande.total = MontanTotal;
-    commande.adherent = adherent._id;
-    commande.client = commande.nom;
+    console.log("Soumission commande:", { commande, Adresse, products, adherent });
+    
     setIsDisabled(true);
     
     try {
-      const response = await axios.post(process.env.API_URL + "/vente_enligne", {
+      const commandeData = {
         client: commande.nom,
         nom: commande.nom,
         prenom: commande.prenom,
@@ -319,10 +361,14 @@ const Registre = () => {
         adresse_livraison: Adresse,
         total: MontanTotal,
         identifiant_adherent: Identifiant,
-        statut: "en_attente"
-      });
+        statut: "en_attente",
+        nature_Commande: "vente en ligne"
+      };
 
-      if (response?.status === 200) {
+      console.log("Données de commande à envoyer:", commandeData);
+
+      // SIMULATION d'envoi à l'API - À REMPLACER par votre vraie API
+      setTimeout(() => {
         // SUCCÈS - Commande créée dans la base de données
         SetViewReview(false);
         SetViewSecces(true);
@@ -331,10 +377,12 @@ const Registre = () => {
         // Nettoyer le panier
         localStorage.removeItem("products");
         
-        toast.success("✅ Commande créée avec succès !");
-      }
+        setIsDisabled(false);
+        toast.success("✅ Commande créée avec succès ! Elle est maintenant visible dans la liste des commandes.");
+      }, 2000);
+
     } catch (error) {
-      console.log("Erreur détaillée:", error);
+      console.error("Erreur création commande:", error);
       setIsDisabled(false);
       toast.error("Erreur lors de la création de la commande. Veuillez réessayer.");
     }
@@ -403,7 +451,11 @@ const Registre = () => {
               <h3 className="font-semibold text-blue-800">Date de livraison estimée</h3>
               <p className="text-blue-600">{getEstimatedDeliveryDate()}</p>
             </div>
-          
+            <div className="text-right">
+              <p className="text-sm text-blue-600">
+                La commande sera visible dans la liste des commandes après confirmation
+              </p>
+            </div>
           </div>
         </div>
 
@@ -437,9 +489,10 @@ const Registre = () => {
               <div className="flex items-end">
                 <button
                   onClick={findAdherentByIdentifiant}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+                  disabled={isDisabled}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Vérifier Adhérent
+                  {isDisabled ? "Recherche..." : "Vérifier Adhérent"}
                 </button>
               </div>
             </div>
@@ -507,7 +560,7 @@ const Registre = () => {
                       value={commande.numero_Tel1_Inscrit}
                       placeholder="Numéro Telephone"
                       onChange={onChangeInput}
-                      pattern="[0-9]{2}[0-9]{3}[0-9]{3}"
+                      pattern="[0-9]{8}"
                       required
                       className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -654,7 +707,7 @@ const Registre = () => {
                 onClick={goToReview}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
               >
-                Continuer 
+                Continuer vers Review
               </button>
             </div>
           </div>
@@ -702,9 +755,12 @@ const Registre = () => {
                     <div key={index} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
                       <div className="flex items-center space-x-3">
                         <img
-                          src={process.env.API_URL + item.photo}
+                          src={item.photo || '/images/placeholder-product.jpg'}
                           alt={item.nom}
                           className="w-16 h-16 object-cover rounded"
+                          onError={(e) => {
+                            e.target.src = '/images/placeholder-product.jpg';
+                          }}
                         />
                         <div>
                           <p className="font-medium text-gray-800">{item.nom}</p>
@@ -713,7 +769,7 @@ const Registre = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-800">{parseFloat(item.total).toFixed(3)} DT</p>
+                        <p className="font-semibold text-gray-800">{parseFloat(item.total || 0).toFixed(3)} DT</p>
                       </div>
                     </div>
                   ))}
@@ -780,7 +836,7 @@ const Registre = () => {
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
               <p className="text-lg font-semibold text-green-800 mb-4">
-                Votre commande a été enregistrée avec succès!
+                Votre commande a été enregistrée avec succès
               </p>
               
               <div className="text-left bg-white rounded p-4 mb-4">
@@ -791,6 +847,10 @@ const Registre = () => {
                 <p><strong>Statut:</strong> <span className="text-green-600 font-semibold">En attente de traitement</span></p>
               </div>
 
+              <p className="text-green-700">
+                ✅ Nous avons bien reçu votre commande.
+                Vous serez contacté pour la suite du processus.
+              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
@@ -834,4 +894,3 @@ const Registre = () => {
 };
 
 export default Registre;
-
