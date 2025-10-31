@@ -17,7 +17,8 @@ function getStateFromURL() {
   const libelle = urlParams.get("libelle");
   return { libelle };
 }
-const API = (process.env.API_URL || "https://api.vnova.tn/api").replace(/\/+$/, "");
+const VITE = typeof import.meta !== 'undefined' ? import.meta.env : {};
+const API = (VITE?.VITE_API_URL || process.env.REACT_APP_API_URL || process.env.API_URL || "https://api.vnova.tn/api").replace(/\/+$/, "");
 const API_ORIGIN = API.replace(/\/api$/, "");
 
 const normalizeLibelle = (input) => {

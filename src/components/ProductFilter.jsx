@@ -12,14 +12,16 @@ const Product = ({libelle , id} ) => {
     navigate("/product_details"  , {state : 
       item
     });
-  
   }
   const [filter , setfilter ] = useState([]);
-  const getallproduits = async () => {
 
+  const VITE = typeof import.meta !== 'undefined' ? import.meta.env : {};
+  const API = (VITE?.VITE_API_URL || process.env.REACT_APP_API_URL || process.env.API_URL || 'https://api.vnova.tn/api').replace(/\/+$/, '');
+
+  const getallproduits = async () => {
     try {
-      await axios.post(process.env.API_URL+"/filterproduit/" ,{ libelle : libelle}).then((response) => {
-       setfilter(response?.data?.result)
+      await axios.post(`${API}/filterproduit/` ,{ libelle : libelle}).then((response) => {
+        setfilter(response?.data?.result)
       });
     } catch (error) {
       console.log(error);
@@ -65,7 +67,7 @@ const Product = ({libelle , id} ) => {
             <button onClick={() => nav(item)}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <img
-                  src={process.env.API_URL + item?.photo}
+                  src={API + (item?.photo?.startsWith('/') ? item?.photo : `/${item?.photo}`)}
                   alt=""
                   className="h-[50%] w-[80%] justify-center text-center space-y-1"
                   style={{ margin: "auto" }}

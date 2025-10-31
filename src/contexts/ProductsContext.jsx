@@ -18,8 +18,9 @@ export function ProductsProvider({ children }) {
       setLoading(true);
       setError(null);
       try {
-        const base = process.env.VITE_API_URL || process.env.API_URL || 'https://api.vnova.tn';
-        const urls = [`${base}/api/produit`, `${base}/produit`, `${base}/produit/`];
+        const VITE = typeof import.meta !== 'undefined' ? import.meta.env : {};
+        const base = (VITE?.VITE_API_URL || process.env.REACT_APP_API_URL || process.env.API_URL || 'https://api.vnova.tn/api').replace(/\/+$/, '');
+        const urls = [`${base}/produit`, `${base}/produit/`, `${base}/api/produit`];
         let res = null;
         for (const u of urls) {
           try {

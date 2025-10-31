@@ -848,7 +848,7 @@ const Registre = () => {
               </div>
 
               <p className="text-green-700">
-                ✅ Nous avons bien reçu votre commande.
+                ✅ Votre commande est maintenant visible dans la liste des commandes de l'administration.
                 Vous serez contacté pour la suite du processus.
               </p>
             </div>

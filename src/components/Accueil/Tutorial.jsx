@@ -174,9 +174,9 @@ export default function AcheterParCategories() {
         <div key={active} className="flex flex-col lg:grid lg:grid-cols-[1.08fr_1.52fr] h-full">
 
      
-          <div className="relative min-h-[420px] md:min-h-[500px] lg:h-full bg-[linear-gradient(180deg,#b4bcc4_0%,#e8ecf0_100%)]">
+          <div className="relative min-h-[300px] md:min-h-[500px] lg:h-full bg-[linear-gradient(180deg,#b4bcc4_0%,#e8ecf0_100%)]">
 
-            <Badge className="absolute top-3 md:top-1 left-4 md:left-8 w-[50px] md:w-[60px] h-[80px] md:h-[96px]" />
+            <Badge className="absolute top-0 md:top-1 left-4 md:left-8 w-[45px] md:w-[60px] h-[80px] md:h-[96px]" />
 
             <div className="h-full flex flex-col justify-center items-center px-4 md:px-8 lg:px-12 py-8 lg:py-0">
 
@@ -223,7 +223,7 @@ export default function AcheterParCategories() {
                         )}
                       </div>
 
-                      <div className="text-[#0b2a3b] flex-1 pt-1">
+                      <div className="text-[#0b2a3b] flex-1 pt-1 text-center md:text-left">
                         <div className="font-semibold text-[18px] md:text-[22px] lg:text-[24px] xl:text-[26px] leading-tight tracking-wide uppercase">
                           {b.title}
                         </div>
@@ -243,7 +243,7 @@ export default function AcheterParCategories() {
 
           </div>
 
-          <div className="relative h-[400px]  md:h-auto lg:h-full ">
+          <div className="relative h-full  md:h-auto lg:h-full ">
             <img
               src={tab.heroImage}
 
@@ -310,6 +310,12 @@ export default function AcheterParCategories() {
       </div>
 
       <style jsx>{`
+        @media (max-width: 768px) {
+          .timeline-line {
+            height: 51px !important;
+          }
+        }
+        
         @media (min-width: 1024px) {
           .timeline-line {
             height: calc(100% + 3rem) !important;

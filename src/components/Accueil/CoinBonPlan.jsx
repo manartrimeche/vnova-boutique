@@ -43,24 +43,28 @@ export default function CoinBonPlan({
 }) {
   const navigate = useNavigate();
 
+  const VITE = typeof import.meta !== "undefined" ? import.meta.env : {};
+  const API = (VITE?.VITE_API_URL || process.env.REACT_APP_API_URL || process.env.API_URL || "https://api.vnova.tn/api").replace(/\/+$/, "");
+  const ORIGIN = API.replace(/\/api$/, "");
+
   const [apiImg, setApiImg] = useState("");
   useEffect(() => {
     let cancel = false;
     (async () => {
       if (!productSearch) return;
       try {
-        const url = `${(process.env.API_URL || "").replace(/\/+$/, "")}/produit/search?q=${encodeURIComponent(productSearch)}`;
+        const url = `${API}/produit/search?q=${encodeURIComponent(productSearch)}`;
         const r = await axios.get(url);
         const arr = r?.data?.result || r?.data || [];
         const first = Array.isArray(arr) ? arr[0] : null;
         const raw = first?.photo || first?.image || first?.imgUrl || first?.imageUrl || "";
         if (!cancel && raw) {
           const isAbs = /^https?:\/\//i.test(raw) || raw?.startsWith("/");
-          const full = isAbs ? raw : `${process.env.API_URL}${raw}`;
+          const full = isAbs ? raw : `${ORIGIN}${raw.startsWith("/") ? "" : "/"}${raw}`;
           setApiImg(full);
         }
       } catch {
-    
+        
       }
     })();
     return () => { cancel = true; };
